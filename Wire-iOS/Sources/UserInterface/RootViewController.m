@@ -28,18 +28,15 @@
 // Helpers
 #import "WAZUIMagicIOS.h"
 #import "Analytics+iOS.h"
-#import "KeyboardFrameObserver.h"
 
 #import "UIColor+WAZExtensions.h"
 #import "ZMUser+Additions.h"
 #import "Constants.h"
-#import "FileManager.h"
 
 #import "AnalyticsConversationListObserver.h"
 #import "ZClientViewController.h"
 #import "RegistrationViewController.h"
 #import "AnalyticsTracker.h"
-#import "ConversationListViewController.h"
 #import "StopWatch.h"
 #import "UIViewController+Orientation.h"
 #import "Wire-Swift.h"
@@ -53,15 +50,11 @@
 
 @interface RootViewController ()  <ZMUserObserver>
 
-@property (nonatomic, strong, readwrite) KeyboardFrameObserver *keyboardFrameObserver;
-
-
 @property (nonatomic) UIViewController *visibleViewController;
 
 @property (nonatomic) RegistrationViewController *registrationViewController;
 
 @property (nonatomic, strong) id convContentChangedObserver;
-@property (nonatomic, assign) UIInterfaceOrientation lastVisibleInterfaceOrientation;
 
 @property (nonatomic) id<ZMAuthenticationObserverToken> authToken;
 @property (nonatomic) id userObserverToken;
@@ -80,7 +73,7 @@
 {
     self = [super initWithNibName:nibNameOrNil bundle:nibBundleOrNil];
     if (self) {
-        [self setup];
+        self.authToken = [[ZMUserSession sharedSession] addAuthenticationObserver:self];
     }
     return self;
 }
@@ -91,13 +84,6 @@
     [[NSNotificationCenter defaultCenter] removeObserver:self];
 
     [[ZMUserSession sharedSession] removeAuthenticationObserverForToken:self.authToken];
-}
-
-- (void)setup
-{
-    self.keyboardFrameObserver = [[KeyboardFrameObserver alloc] init];
-
-    self.authToken = [[ZMUserSession sharedSession] addAuthenticationObserver:self];
 }
 
 - (void)viewDidLoad
@@ -112,12 +98,6 @@
     } else {
         [self presentRegistration];
     }
-}
-
-- (void)viewWillDisappear:(BOOL)animated
-{
-    [super viewWillDisappear:animated];
-    self.lastVisibleInterfaceOrientation = [UIApplication sharedApplication].statusBarOrientation;
 }
 
 #pragma mark - View controller rotation
@@ -203,6 +183,20 @@
             self.visibleViewController = viewController;
             [[UIApplication sharedApplication] wr_updateStatusBarForCurrentControllerAnimated:YES];
         }];
+    }
+}
+
+- (void)reloadCurrentController
+{
+    if (self.isLoggedIn) {
+        [self.zClientViewController dismissAllModalControllersWithCallback:^{
+            self.zClientViewController = nil;
+            [self presentFrameworkFromRegistration:NO];
+        }];
+    }
+    else {
+        self.registrationViewController = nil;
+        [self presentRegistration];
     }
 }
 
